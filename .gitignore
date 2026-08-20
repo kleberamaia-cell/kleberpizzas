@@ -1,0 +1,13 @@
+# Git Ignore
+scratch/
+hts-cache/
+hts-log.txt
+*.whtt
+*.tmp
+piizaria-aberta.vercel.app/
+pizzaria-aberta-agora.vercel.app/
+pizzas-na-promo.vercel.app/
+pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/
+backblue.gif
+fade.gif
+server.ps1
