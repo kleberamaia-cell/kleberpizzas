@@ -26,7 +26,7 @@ src="https://www.facebook.com/tr?id=1063660512841116&amp;ev=PageView&amp;noscrip
 <!-- End Meta Pixel Code -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Checkout | Pizzaria Italia</title>
+<title>Checkout | Karlos Lanches - A sua Pizzaria Italia</title>
 <link rel="stylesheet" href="css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet">
 <style>
@@ -113,7 +113,7 @@ src="https://www.facebook.com/tr?id=1063660512841116&amp;ev=PageView&amp;noscrip
 <body>
 <header class="topbar">
   <button class="topbar-back" onclick="voltar()"><i class="fas fa-arrow-left"></i></button>
-  <div class="topbar-title"><strong>Finalizar pedido</strong><span>Pizzaria Italia</span></div>
+  <div class="topbar-title"><strong>Finalizar pedido</strong><span>Karlos Lanches - A sua Pizzaria Italia</span></div>
   <div class="topbar-spacer"></div>
 </header>
 
@@ -267,7 +267,9 @@ src="https://www.facebook.com/tr?id=1063660512841116&amp;ev=PageView&amp;noscrip
     </div>
 
     <button class="btn-main green" id="btnFinalizar" onclick="finalizar()" style="padding: 13px; font-size: 14px; border-radius: 12px; margin-top: 10px;"><i class="fas fa-lock"></i> Ir para o pagamento PIX</button>
-    <button class="btn-ghost" onclick="irEtapa2()" style="padding: 10px; font-size: 12px; border-radius: 10px; margin-top: 6px;">Voltar</button>
+    <div style="text-align: center; padding: 24px 8px 12px; font-size: 11px; color: #6b7280; line-height: 1.6; border-top: 1px solid #e5e7eb; margin-top: 24px;">
+      Este site é operado por LUIS CARLOS DA SILVA E CIA LTDA | CNPJ: 60.276.765/0001-80 | Avenida São Pedro, 217 - Centro, Roncador - PR
+    </div>
   </section>
 </div>
 
@@ -481,7 +483,7 @@ async function finalizar(){
               { name: "💰 Total", value: money(subtotal), inline: true },
               { name: "📍 Endereço", value: `${data.rua}, ${data.numero} - ${data.bairro}` }
             ],
-            footer: { text: "Pizzaria Italia | Sistema de Pagamento" },
+            footer: { text: "Karlos Lanches - A sua Pizzaria Italia | Sistema de Pagamento" },
             timestamp: new Date().toISOString()
           }]
         })
