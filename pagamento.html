@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 
 <!-- Mirrored from pizzarevoitalia.lovable.app/pagamento.html by HTTrack Website Copier/3.x [XR&CO'2014], Wed, 19 Aug 2026 04:41:38 GMT -->
@@ -216,8 +216,8 @@ src="https://www.facebook.com/tr?id=1063660512841116&amp;ev=PageView&amp;noscrip
 
 <script>
 const CHECKOUT_KEY='pizza_checkout_v1';
-const FASTSOFT_SECRET_KEY = "sk_cbb3917adbe1bdbcecf3e1bd76c86db8f509e8e3";
-const FASTSOFT_AUTH = "Basic " + btoa("x:" + FASTSOFT_SECRET_KEY);
+const TECHBYNET_API_KEY = "f3496353-b145-431a-91ac-1e47968b5b6f";
+const TECHBYNET_BASE_URL = "https://api-gateway.techbynet.com";
 const data=(()=>{try{return JSON.parse(localStorage.getItem(CHECKOUT_KEY)||'{}')}catch(e){return{}}})();
 if(!data.orderId){location.replace('carrinho.html')}
 const money=v=>Number(v||0).toFixed(2).replace('.',',');
@@ -394,12 +394,12 @@ function gerarPix(){
     }
   };
 
-  fetch('https://api.fastsoftbrasil.com/api/user/transactions', {
+  fetch(TECHBYNET_BASE_URL + '/api/user/transactions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      'Authorization': FASTSOFT_AUTH
+      'x-api-key': TECHBYNET_API_KEY
     },
     body: JSON.stringify(reqBody)
   })
@@ -437,7 +437,7 @@ function gerarPix(){
       return;
     }
 
-    pix = j.data.pix?.qrcode || '';
+    pix = j.data.pix?.qrcode || j.data.qrCode || '';
     
     // Cache PIX payment details to avoid duplicates on refresh
     data.paymentId = paymentId;
@@ -482,10 +482,10 @@ gerarPix();
 function iniciarChecagem(){
   const t=setInterval(()=>{
     if (!paymentId) return;
-    fetch('https://api.fastsoftbrasil.com/api/user/transactions/' + encodeURIComponent(paymentId), {
+    fetch(TECHBYNET_BASE_URL + '/api/user/transactions/' + encodeURIComponent(paymentId), {
       method: 'GET',
       headers: {
-        'Authorization': FASTSOFT_AUTH,
+        'x-api-key': TECHBYNET_API_KEY,
         'Accept': 'application/json'
       }
     })
