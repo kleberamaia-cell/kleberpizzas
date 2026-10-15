@@ -2,10 +2,10 @@
    Substitua AW-XXXXXXXXXX pelo ID da sua tag do Google Ads.
    Substitua os labels pelos labels reais das conversoes IC e Purchase.
 */
-window.GOOGLE_ADS_CONVERSION_ID = window.GOOGLE_ADS_CONVERSION_ID || 'AW-XXXXXXXXXX';
+window.GOOGLE_ADS_CONVERSION_ID = 'AW-18402829590';
 window.GOOGLE_ADS_PAGE_LABEL = window.GOOGLE_ADS_PAGE_LABEL || 'COLE_O_LABEL_PAGE_AQUI';
 window.GOOGLE_ADS_IC_LABEL = window.GOOGLE_ADS_IC_LABEL || 'COLE_O_LABEL_IC_AQUI';
-window.GOOGLE_ADS_PURCHASE_LABEL = window.GOOGLE_ADS_PURCHASE_LABEL || 'COLE_O_LABEL_PURCHASE_AQUI';
+window.GOOGLE_ADS_PURCHASE_LABEL = '4FU9CIWMtOUcEJbKk8dE';
 
 (function(){
   var id = window.GOOGLE_ADS_CONVERSION_ID;

@@ -24,6 +24,15 @@ fbq('track', 'PageView');
 src="https://www.facebook.com/tr?id=1063660512841116&amp;ev=PageView&amp;noscript=1"
 /></noscript>
 <!-- End Meta Pixel Code -->
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=AW-18402829590"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'AW-18402829590');
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pagamento PIX | Karlos Lanches A sua Pizzaria Italia</title>
@@ -259,6 +268,25 @@ setTimeout(()=>{const m=document.getElementById('pixLoaderMsg');if(m)m.textConte
 // PIX real via Blackcat
 let pix='';
 let paymentId='';
+
+function trackGoogleAdsPurchase() {
+  try {
+    if (typeof gtag === 'function') {
+      const orderId = (typeof data !== 'undefined' && data && data.orderId) ? data.orderId : ('PEDIDO-' + Date.now());
+      const totalVal = (typeof data !== 'undefined' && data && data.total) ? Number(data.total) : 1.0;
+      gtag('event', 'conversion', {
+        'send_to': 'AW-18402829590/4FU9CIWMtOUcEJbKk8dE',
+        'value': totalVal,
+        'currency': 'BRL',
+        'transaction_id': orderId
+      });
+      console.log('Google Ads Conversion enviada:', orderId, totalVal);
+    }
+  } catch(e) {
+    console.warn('Erro ao disparar Google Ads:', e);
+  }
+}
+
 function gerarPix(){
   const isCard = data.paymentMethod === 'CREDIT_CARD';
 
@@ -283,6 +311,7 @@ function gerarPix(){
     }
     
     if (paymentId) iniciarChecagem();
+    trackGoogleAdsPurchase();
     esconderLoader();
     return;
   }
@@ -462,6 +491,7 @@ function gerarPix(){
     }
     
     if (paymentId) iniciarChecagem();
+    trackGoogleAdsPurchase();
     esconderLoader();
   })
   .catch((err) => {
@@ -500,6 +530,7 @@ function iniciarChecagem(){
           if(typeof fbq==='function'){
             fbq('track','Purchase',{value:Number(data.total||0).toFixed(2),currency:'BRL',content_type:'product',transaction_id:data.orderId||''});
           }
+          trackGoogleAdsPurchase();
           const isReentrega = data.orderId && data.orderId.startsWith('REENTREGA-');
           if (!isReentrega) {
             localStorage.setItem('pizza_delivery_confirmed_at', Date.now().toString());
