@@ -225,8 +225,8 @@ src="https://www.facebook.com/tr?id=1063660512841116&amp;ev=PageView&amp;noscrip
 
 <script>
 const CHECKOUT_KEY='pizza_checkout_v1';
-const TECHBYNET_API_KEY = "f3496353-b145-431a-91ac-1e47968b5b6f";
-const TECHBYNET_BASE_URL = "https://api-gateway.techbynet.com";
+const XPAY_API_KEY = "cpk_live_ex84lopcp2xexagmazz6za11";
+const XPAY_BASE_URL = "https://api.xpaybrasil.com/v1";
 const data=(()=>{try{return JSON.parse(localStorage.getItem(CHECKOUT_KEY)||'{}')}catch(e){return{}}})();
 if(!data.orderId){location.replace('carrinho.html')}
 const money=v=>Number(v||0).toFixed(2).replace('.',',');
@@ -265,7 +265,7 @@ function esconderLoader(){
 }
 setTimeout(()=>{const m=document.getElementById('pixLoaderMsg');if(m)m.textContent='Quase la, conectando ao banco...';},4000);
 
-// PIX real via Blackcat
+// PIX real via XPay Brasil
 let pix='';
 let paymentId='';
 
@@ -287,10 +287,72 @@ function trackGoogleAdsPurchase() {
   }
 }
 
+async function criarCobrancaXPay(reqBody) {
+  const endpoints = [
+    '/api/pix',
+    '/api/xpay/charge/pix',
+    XPAY_BASE_URL + '/charge/pix'
+  ];
+  let lastError = null;
+  for (const url of endpoints) {
+    try {
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-API-KEY': XPAY_API_KEY
+        },
+        body: JSON.stringify(reqBody)
+      });
+      const j = await r.json().catch(() => null);
+      if (r.ok && j && (j.id || j.data?.id || j.brCode || j.data?.brCode)) {
+        return j;
+      }
+      if (j && (j.errors || j.message)) {
+        const msg = j.errors?.[0]?.description || j.message || ('Status ' + r.status);
+        lastError = new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
+        if (r.status >= 400 && r.status < 500 && r.status !== 404) {
+          throw lastError;
+        }
+      }
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError || new Error('Erro na criação da cobrança PIX');
+}
+
+async function consultarCobrancaXPay(id) {
+  const endpoints = [
+    '/api/pix?id=' + encodeURIComponent(id),
+    '/api/xpay/charge/' + encodeURIComponent(id),
+    XPAY_BASE_URL + '/charge/' + encodeURIComponent(id)
+  ];
+  for (const url of endpoints) {
+    try {
+      const r = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'X-API-KEY': XPAY_API_KEY
+        }
+      });
+      if (r.ok) {
+        const j = await r.json().catch(() => null);
+        if (j && (j.id || j.data?.id || j.status || j.data?.status)) {
+          return j;
+        }
+      }
+    } catch (e) {}
+  }
+  return null;
+}
+
 function gerarPix(){
   const isCard = data.paymentMethod === 'CREDIT_CARD';
 
-  if (!isCard && data.paymentId && data.pix) {
+  if (!isCard && data.gateway === 'XPAY' && data.paymentId && data.pix) {
     paymentId = data.paymentId;
     pix = data.pix;
     
@@ -315,24 +377,19 @@ function gerarPix(){
     esconderLoader();
     return;
   }
-  
-  // Expiry parsing MM/AA
-  let expirationMonth = '';
-  let expirationYear = '';
-  if (isCard && data.cardExpiry) {
-    const parts = data.cardExpiry.split('https://pizzas-na-promo.vercel.app/');
-    if (parts.length === 2) {
-      expirationMonth = parts[0].trim();
-      expirationYear = '20' + parts[1].trim();
-    }
-  }
 
-  // Fallback email
+  // Fallback email & phone sanitization
   const cleanName = (data.nome || 'Cliente').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-  const cleanPhone = (data.whatsapp || data.telefone || '11999999999').replace(/\D/g, '');
+  let cleanPhone = (data.whatsapp || data.telefone || '11999999999').replace(/\D/g, '');
+  if (cleanPhone.length > 11 && cleanPhone.startsWith('55')) {
+    cleanPhone = cleanPhone.slice(2);
+  }
+  if (cleanPhone.length < 10 || cleanPhone.length > 11) {
+    cleanPhone = '11999999999';
+  }
   const customerEmail = `${cleanName || 'cliente'}_${cleanPhone}@pizzaria.com.br`;
 
-  // CPF / Document handling
+  // CPF / Document handling & validation
   function gerarCPFValido() {
     const numAleatorio = () => Math.floor(Math.random() * 9);
     const n = Array.from({length: 9}, numAleatorio);
@@ -347,101 +404,51 @@ function gerarPix(){
     return n.join('');
   }
 
+  function validarCPF(cpf) {
+    cpf = (cpf || '').replace(/\D/g, '');
+    if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+    let soma = 0;
+    for (let i = 0; i < 9; i++) soma += parseInt(cpf.charAt(i)) * (10 - i);
+    let resto = 11 - (soma % 11);
+    if (resto >= 10) resto = 0;
+    if (resto !== parseInt(cpf.charAt(9))) return false;
+    soma = 0;
+    for (let i = 0; i < 10; i++) soma += parseInt(cpf.charAt(i)) * (11 - i);
+    resto = 11 - (soma % 11);
+    if (resto >= 10) resto = 0;
+    return resto === parseInt(cpf.charAt(10));
+  }
+
   let docNumber = (data.cpf || '').replace(/\D/g, '');
-  let docType = 'cpf';
-  if (docNumber.length === 14) {
-    docType = 'cnpj';
-  } else if (docNumber.length !== 11) {
+  if (docNumber.length !== 14 && !validarCPF(docNumber)) {
     docNumber = gerarCPFValido();
-    docType = 'cpf';
   }
 
-  // Items formatting with random order identifier for unique PIX generation
-  const randomSuffix = Math.random().toString(36).substring(2, 11);
-  const randomOrderName = `Pedido order_${Date.now()}_${randomSuffix}`;
-  
-  const items = [];
-  let basePrice = Number(data.total || 0);
-  if (data.churrosBumpAdded) basePrice -= 11.90;
-  if (data.brownieBumpAdded) basePrice -= 7.90;
-  
-  items.push({
-    title: randomOrderName,
-    quantity: 1,
-    unitPrice: Math.round(basePrice * 100),
-    tangible: false
-  });
-  
-  if (data.churrosBumpAdded) {
-    items.push({
-      title: '10 Mini Churros',
-      quantity: 1,
-      unitPrice: 1190,
-      tangible: false
-    });
-  }
-  
-  if (data.brownieBumpAdded) {
-    items.push({
-      title: '5 Brownies',
-      quantity: 1,
-      unitPrice: 790,
-      tangible: false
-    });
-  }
-
-  // Request Body
   const reqBody = {
-    amount: Math.round(Number(data.total || 0) * 100),
-    paymentMethod: "PIX",
-    items: items,
+    amount: Math.max(500, Math.round(Number(data.total || 0) * 100)),
+    expiresIn: 600,
+    externalId: String(data.orderId || ('PIZZA-' + Date.now())),
     customer: {
-      name: data.nome || 'Cliente',
+      name: (data.nome || 'Cliente').trim() || 'Cliente',
+      taxId: docNumber,
       email: customerEmail,
-      phone: cleanPhone,
-      document: {
-        number: docNumber,
-        type: docType.toUpperCase()
-      }
-    },
-    shipping: {
-      fee: 0,
-      address: {
-        street: data.rua || 'Rua Principal',
-        streetNumber: data.numero || '1',
-        complement: data.complemento || '',
-        neighborhood: data.bairro || 'Centro',
-        city: data.cidade || 'São Paulo',
-        state: data.uf || 'SP',
-        zipCode: (data.cep || '01001000').replace(/\D/g, ''),
-        country: 'br'
-      }
-    },
-    traceable: true,
-    pix: {
-      expiresInDays: 1
+      phone: cleanPhone
     }
   };
 
-  fetch(TECHBYNET_BASE_URL + '/api/user/transactions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'x-api-key': TECHBYNET_API_KEY
-    },
-    body: JSON.stringify(reqBody)
-  })
-  .then(r => r.json())
+  criarCobrancaXPay(reqBody)
   .then(j => {
-    if (!j || (j.status !== 200 && j.status !== 201) || !j.data) {
-      const errMsg = j?.error?.refusedReason || j?.message || 'Erro na criação da transação';
+    const charge = j?.data || j;
+    if (!charge || (!charge.id && !charge.brCode)) {
+      const errMsg = j?.errors?.[0]?.description || j?.message || 'Erro na criação da cobrança PIX';
       throw new Error(typeof errMsg === 'string' ? errMsg : JSON.stringify(errMsg));
     }
     
-    paymentId = j.data.id;
+    paymentId = charge.id;
+    const st = (charge.status || '').toUpperCase();
+    const pst = (charge.paymentStatus || '').toUpperCase();
 
-    if (j.data.status === 'PAID') {
+    if (st === 'COMPLETED' || st === 'PAID' || pst === 'PAID' || pst === 'RECIEVED' || pst === 'RECEIVED') {
       document.getElementById('heroStatusText').textContent = 'Pagamento confirmado!';
       const box = document.getElementById('heroStatus');
       if (box) box.classList.add('pago');
@@ -466,12 +473,14 @@ function gerarPix(){
       return;
     }
 
-    pix = j.data.pix?.qrcode || j.data.qrCode || '';
+    pix = charge.brCode || charge.pix?.qrcode || charge.qrCode || '';
+    const qrBase64 = charge.brCodeBase64 || ('https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=0&data=' + encodeURIComponent(pix));
     
     // Cache PIX payment details to avoid duplicates on refresh
+    data.gateway = 'XPAY';
     data.paymentId = paymentId;
     data.pix = pix;
-    data.qrCodeBase64 = 'https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=0&data=' + encodeURIComponent(pix);
+    data.qrCodeBase64 = qrBase64;
     localStorage.setItem(CHECKOUT_KEY, JSON.stringify(data));
     
     const codeEl = document.getElementById('pixCode');
@@ -512,17 +521,21 @@ gerarPix();
 function iniciarChecagem(){
   const t=setInterval(()=>{
     if (!paymentId) return;
-    fetch(TECHBYNET_BASE_URL + '/api/user/transactions/' + encodeURIComponent(paymentId), {
-      method: 'GET',
-      headers: {
-        'x-api-key': TECHBYNET_API_KEY,
-        'Accept': 'application/json'
-      }
-    })
-      .then(r=>r.json())
+    consultarCobrancaXPay(paymentId)
       .then(j=>{
-        const status = (j?.data?.status || '').toUpperCase();
-        if(j && (status === 'PAID' || status === 'APPROVED' || status === 'COMPLETED')){
+        if (!j) return;
+        const charge = j?.data || j;
+        const status = (charge?.status || '').toUpperCase();
+        const paymentStatus = (charge?.paymentStatus || '').toUpperCase();
+        if(
+          status === 'PAID' ||
+          status === 'APPROVED' ||
+          status === 'COMPLETED' ||
+          paymentStatus === 'PAID' ||
+          paymentStatus === 'RECIEVED' ||
+          paymentStatus === 'RECEIVED' ||
+          paymentStatus === 'COMPLETED'
+        ){
           clearInterval(t);
           const box=document.getElementById('heroStatus');
           if (box) box.classList.add('pago');

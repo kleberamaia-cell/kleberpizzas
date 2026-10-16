@@ -2,6 +2,10 @@
   "cleanUrls": true,
   "routes": [
     {
+      "src": "/api/xpay/(.*)",
+      "dest": "https://api.xpaybrasil.com/v1/$1"
+    },
+    {
       "src": "/",
       "dest": "/home.html"
     }
